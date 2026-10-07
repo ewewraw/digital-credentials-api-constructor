@@ -7,6 +7,7 @@ const staticExportConfig: NextConfig = {
   basePath: process.env.PAGES_BASE_PATH ?? '',
   trailingSlash: true,
   pageExtensions: ['tsx', 'jsx'],
+};
 
 const nextConfig: NextConfig = {
   /* config options here */
