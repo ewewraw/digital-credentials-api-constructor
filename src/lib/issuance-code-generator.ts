@@ -1,13 +1,15 @@
 
-import { ALL_ISSUANCE_FIELDS } from './issuance-options';
+import { ALL_ISSUANCE_FIELDS, LEGACY_ISSUANCE_PROTOCOL } from './issuance-options';
+import { ISSUER_URL_PLACEHOLDER } from './issuer-url';
+import { createArbitraryRequest } from './protocol-filtering';
 import type { IssuanceRequestOptions } from './types';
 
 export function generateIssuanceRequestObject(options: IssuanceRequestOptions): any {
   const selectedFields = ALL_ISSUANCE_FIELDS.filter((f) => options.fields.includes(f.id));
 
-  // In a real application, this would be the issuer's actual origin.
-  // We use the window location for this demo to make it dynamic.
-  const issuerOrigin = options.issuerUrl || (typeof window !== 'undefined' ? window.location.origin : 'https://app.com');
+  // The wallet calls the issuer endpoints directly, so this must be the URL of
+  // a server that runs this app's /openid4vci route handlers.
+  const issuerOrigin = options.issuerUrl?.trim() || ISSUER_URL_PLACEHOLDER;
   console.log("issuerOrigin", issuerOrigin)
 
   const baseUrl = issuerOrigin.replace(/\/$/, '');
@@ -25,11 +27,16 @@ export function generateIssuanceRequestObject(options: IssuanceRequestOptions): 
     },
     grants: {
       'authorization_code': {
+        // The wallet returns issuer_state to the issuer. This demo issuer is
+        // stateless, so issuer_state carries the claim values and card design.
+        // TODO(security): A production issuer keeps this state on its server and
+        // sends an opaque reference instead, because the wallet can change it.
         issuer_state: JSON.stringify({
           claims: selectedFields.reduce((acc, field) => {
             acc[field.id] = options.fieldValues[field.id] || '';
             return acc;
-          }, {} as Record<string, string>)
+          }, {} as Record<string, string>),
+          card_design: options.cardDesign,
         })
       }
     },
@@ -77,19 +84,37 @@ export function generateIssuanceRequestObject(options: IssuanceRequestOptions): 
         }, {} as Record<string, any>),
     }
   };
-  
+
+  const requests: { protocol: string; data: object }[] = [{ protocol: options.protocol, data: credentialOffer }];
+  if (includesLegacyRequest(options)) {
+    // The same offer, with the identifier that CMWallet uses in its reply.
+    requests.push({ protocol: LEGACY_ISSUANCE_PROTOCOL, data: credentialOffer });
+  }
+  if (options.includeArbitraryRequest) {
+    // Last, so the offer requests keep the same order as without it.
+    requests.push(createArbitraryRequest());
+  }
+
   return {
       digital: {
-          requests: [{
-            protocol: 'openid4vci1.0',
-              data: credentialOffer,
-          }]
+          requests,
       }
   }
+}
+
+/** Returns whether the request repeats the offer with the earlier openid4vci identifier. */
+export function includesLegacyRequest(options: IssuanceRequestOptions): boolean {
+  return options.includeLegacyProtocol && options.protocol !== LEGACY_ISSUANCE_PROTOCOL;
 }
 
 export function generateIssuanceRequestCode(options: IssuanceRequestOptions): string {
   const requestObject = generateIssuanceRequestObject(options);
   const objectString = JSON.stringify(requestObject, null, 2);
-  return `navigator.credentials.create(${objectString});`;
+  const call = `navigator.credentials.create(${objectString});`;
+  if (!includesLegacyRequest(options)) {
+    return call;
+  }
+  return [
+    call,
+  ].join('\n');
 }

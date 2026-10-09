@@ -1,5 +1,6 @@
 
-import { ALL_FIELDS } from './credential-options';
+import { ALL_FIELDS, isOpenId4VpProtocol } from './credential-options';
+import { createArbitraryRequest } from './protocol-filtering';
 import type { RequestOptions, UnsignedRequestData, SignedRequestData } from './types';
 import * as jose from 'jose';
 import * as cbor from 'cbor';
@@ -401,12 +402,18 @@ async function generateOrgIsoMdocRequest(options: RequestOptions, explicitMdocKe
 }
 
 export async function generateRequestObject(options: RequestOptions, explicitMdocKeyPair?: CryptoKeyPair): Promise<{ requestObject: any; responseDecryptionKey?: CryptoKey }> {
-  if (options.protocol === 'openid4vp') {
+  if (isOpenId4VpProtocol(options.protocol)) {
     const { request } = await generateOpenId4VpRequest(options);
+    // Keep the OpenID4VP request first: CodeDisplay reads requests[0] to add
+    // the response encryption key and to decrypt the response.
+    const requests: object[] = [request];
+    if (options.protocol === 'openid4vp-arbitrary') {
+      requests.push(createArbitraryRequest());
+    }
     return {
       requestObject: {
         digital: {
-          requests: [request],
+          requests,
         },
         mediation: 'required',
       }
@@ -451,7 +458,7 @@ export function generateRequestCode(options: RequestOptions, requestObject: any)
       .replace(`"request": "${placeholder}"`, `"request": "${placeholder}" // This would be the full JWS`);
   } 
   
-  if (options.protocol === 'openid4vp' && options.encryptResponse) {
+  if (isOpenId4VpProtocol(options.protocol) && options.encryptResponse) {
      // The jwks part of the request needs to be dynamically generated at runtime
      // before making the call. Here, we replace the placeholder with a comment.
      objectString = objectString.replace(

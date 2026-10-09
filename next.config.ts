@@ -12,6 +12,16 @@ const staticExportConfig: NextConfig = {
 const nextConfig: NextConfig = {
   /* config options here */
   ...(isStaticExport ? staticExportConfig : {}),
+  env: {
+    // A static export can't include the issuer route handlers, so tell the
+    // issuance page that its own origin can't serve the issuer endpoints.
+    NEXT_PUBLIC_STATIC_EXPORT: String(isStaticExport),
+  },
+  // The credential endpoint reads the card art files at runtime. Include them
+  // in its deployment on hosts that only deploy the files a route imports.
+  outputFileTracingIncludes: {
+    '/openid4vci/credential': ['./public/card-designs/*.png'],
+  },
   typescript: {
     ignoreBuildErrors: true,
   },

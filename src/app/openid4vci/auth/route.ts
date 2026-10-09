@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { parStorage } from '@/lib/par-storage';
+import { resolveRequestUri } from '@/lib/par-storage';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -9,29 +9,26 @@ export async function GET(request: Request) {
   const requestUri = searchParams.get('request_uri');
 
   if (requestUri) {
-    // If request_uri is present, we must use the stored parameters
-    const stored = parStorage.get(requestUri);
-    if (stored) {
-      const { redirectUri: storedRedirectUri, state: storedState, issuerState: storedIssuerState } = JSON.parse(stored);
-      // Override params with stored ones
-      if (storedRedirectUri) {
-        // This is a hack for the mock: we can't easily mutate const redirectUri effectively in this scope without let
-        return handleRedirect(storedRedirectUri, storedState || state, storedIssuerState);
-      }
+    // If request_uri is present, we must use the pushed parameters
+    const pushed = resolveRequestUri(requestUri);
+    if (pushed) {
+      return handleRedirect(pushed.redirectUri, pushed.state || state, pushed.issuerState);
     }
-    // If we can't find it, we might fall back or error.
-    console.warn(`[Auth Endpoint] specific request_uri not found in storage: ${requestUri}`);
+    // If we can't resolve it, we might fall back or error.
+    console.warn('[Auth Endpoint] Invalid or expired request_uri');
   }
 
   if (!redirectUri) {
     return new NextResponse('Missing redirect_uri', { status: 400 });
   }
 
-  return handleRedirect(redirectUri, state, undefined);
+  return handleRedirect(redirectUri, state, searchParams.get('issuer_state'));
 }
 
-function handleRedirect(redirectUri: string, state: string | null, issuerState?: string) {
+function handleRedirect(redirectUri: string, state: string | null, issuerState?: string | null) {
   // Mock auto-approval
+  // TODO(security): A production authorization server authenticates the user
+  // here and only redirects to URIs registered for the client.
   // Embed issuerState in the code so the token endpoint can recover it
   const codeData = {
     uuid: crypto.randomUUID(),
@@ -39,7 +36,12 @@ function handleRedirect(redirectUri: string, state: string | null, issuerState?:
   };
   const code = Buffer.from(JSON.stringify(codeData)).toString('base64');
 
-  const redirectUrl = new URL(redirectUri);
+  let redirectUrl: URL;
+  try {
+    redirectUrl = new URL(redirectUri);
+  } catch {
+    return new NextResponse('Invalid redirect_uri', { status: 400 });
+  }
   redirectUrl.searchParams.set('code', code);
   if (state) {
     redirectUrl.searchParams.set('state', state);

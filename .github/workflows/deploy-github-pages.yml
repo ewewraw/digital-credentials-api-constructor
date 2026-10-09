@@ -38,6 +38,10 @@ jobs:
         env:
           STATIC_EXPORT: 'true'
           PAGES_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+          # GitHub Pages can't run the issuer endpoints that the wallet calls,
+          # so the issuance demo needs a server deployment of this app. Set its
+          # URL in the ISSUER_URL repository variable.
+          NEXT_PUBLIC_ISSUER_URL: ${{ vars.ISSUER_URL }}
 
       - name: Upload the site
         uses: actions/upload-pages-artifact@v5

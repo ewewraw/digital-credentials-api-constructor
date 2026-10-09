@@ -5,7 +5,13 @@ import { LucideIcon } from 'lucide-react';
 export const protocols: { value: Protocol; label: string }[] = [
   { value: 'openid4vp', label: 'OpenID4VP' },
   { value: 'org-iso-mdoc', label: 'Annex C (ISO 18013-7)' },
+  { value: 'openid4vp-arbitrary', label: 'OpenID4VP + arbitrary protocol' },
 ];
+
+/** Returns whether the protocol option sends an OpenID4VP request. */
+export function isOpenId4VpProtocol(protocol: Protocol): boolean {
+  return protocol === 'openid4vp' || protocol === 'openid4vp-arbitrary';
+}
 
 export const dataFormats: { value: DataFormat; label: string }[] = [
   { value: 'mso_mdoc', label: 'mso_mdoc' },

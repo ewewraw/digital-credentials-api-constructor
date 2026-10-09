@@ -2,8 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import type { IssuanceRequestOptions } from '@/lib/types';
-import { ALL_ISSUANCE_FIELDS } from '@/lib/issuance-options';
+import {
+  ALL_ISSUANCE_FIELDS,
+  ARBITRARY_PROTOCOL_OPTION,
+  DEFAULT_INCLUDE_LEGACY_PROTOCOL,
+  DEFAULT_ISSUANCE_PROTOCOL,
+  isIssuanceProtocol,
+} from '@/lib/issuance-options';
+import { DEFAULT_CARD_DESIGN, type CardDesignId } from '@/lib/card-designs';
 import { generateIssuanceRequestCode, generateIssuanceRequestObject } from '@/lib/issuance-code-generator';
+import { getDefaultIssuerUrl, getLoopbackIssuerUrlHint, getStaticHostingProblem } from '@/lib/issuer-url';
 import { IssuanceConstructorForm } from '@/components/issuance-constructor-form';
 import { CodeDisplay } from '@/components/code-display';
 import { TestTubeDiagonal, Pilcrow } from 'lucide-react';
@@ -15,14 +23,16 @@ const defaultFieldValues: Record<string, string> = {
   family_name: 'Doe',
 };
 
-const defaultIssuerUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
-
 export default function IssuancePage() {
   const [options, setOptions] = useState<IssuanceRequestOptions>({
-    protocol: 'openid4vci1.0',
+    protocol: DEFAULT_ISSUANCE_PROTOCOL,
+    includeLegacyProtocol: DEFAULT_INCLUDE_LEGACY_PROTOCOL,
+    includeArbitraryRequest: false,
     fields: defaultFields,
     fieldValues: defaultFieldValues,
-    issuerUrl: defaultIssuerUrl,
+    // Set after mount, because the default can depend on window.location.
+    issuerUrl: '',
+    cardDesign: DEFAULT_CARD_DESIGN,
   });
 
   const [generatedCode, setGeneratedCode] = useState<string>('');
@@ -30,7 +40,7 @@ export default function IssuancePage() {
 
   useEffect(() => {
     setIsClient(true);
-    setOptions(prev => ({ ...prev, issuerUrl: window.location.origin }));
+    setOptions(prev => ({ ...prev, issuerUrl: getDefaultIssuerUrl() }));
   }, []);
 
   useEffect(() => {
@@ -75,8 +85,30 @@ export default function IssuancePage() {
     setOptions((prev) => ({ ...prev, issuerUrl: value }));
   };
 
+  const handleIncludeLegacyProtocolChange = (includeLegacyProtocol: boolean) => {
+    setOptions((prev) => ({ ...prev, includeLegacyProtocol }));
+  };
+
+  // Handles a selection in the Protocol list. The arbitrary entry keeps the
+  // current protocol and adds a request with an arbitrary protocol.
+  const handleProtocolOptionChange = (value: string) => {
+    setOptions((prev) => ({
+      ...prev,
+      protocol: isIssuanceProtocol(value) ? value : prev.protocol,
+      includeArbitraryRequest: value === ARBITRARY_PROTOCOL_OPTION.value,
+    }));
+  };
+
+  const handleCardDesignChange = (cardDesign: CardDesignId) => {
+    setOptions((prev) => ({ ...prev, cardDesign }));
+  };
+
   const requestObject = generateIssuanceRequestObject(options);
   console.log('[FINAL REQUEST] Credential Offer:', requestObject);
+  // Check only on the client, because the issuer URL is set after mount and the
+  // static hosting check depends on window.location.
+  const issuerUrlProblem = isClient ? getStaticHostingProblem(options.issuerUrl) : null;
+  const issuerUrlHint = isClient ? getLoopbackIssuerUrlHint(options.issuerUrl) : null;
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-8">
@@ -99,9 +131,14 @@ export default function IssuancePage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
           <IssuanceConstructorForm
             options={options}
+            onProtocolOptionChange={handleProtocolOptionChange}
+            onIncludeLegacyProtocolChange={handleIncludeLegacyProtocolChange}
+            onCardDesignChange={handleCardDesignChange}
             onFieldsChange={handleFieldsChange}
             onFieldValueChange={handleFieldValueChange}
             availableFields={ALL_ISSUANCE_FIELDS}
+            issuerUrlProblem={issuerUrlProblem}
+            issuerUrlHint={issuerUrlHint}
           />
           <CodeDisplay
             code={generatedCode}

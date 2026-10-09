@@ -12,7 +12,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import type { RequestOptions, Protocol, DataFormat, FieldOption } from '@/lib/types';
-import { protocols, dataFormats } from '@/lib/credential-options';
+import { protocols, dataFormats, isOpenId4VpProtocol } from '@/lib/credential-options';
 import { Info } from 'lucide-react';
 import {
   Tooltip,
@@ -20,6 +20,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { ProtocolFilteringNote, PROTOCOL_FILTERING_NOTE_ID } from '@/components/protocol-filtering-note';
 
 interface ConstructorFormProps {
   options: RequestOptions;
@@ -62,7 +63,10 @@ export function ConstructorForm({
               value={options.protocol}
               onValueChange={(value: Protocol) => onOptionsChange({ protocol: value })}
             >
-              <SelectTrigger id="protocol">
+              <SelectTrigger
+                id="protocol"
+                aria-describedby={options.protocol === 'openid4vp-arbitrary' ? PROTOCOL_FILTERING_NOTE_ID : undefined}
+              >
                 <SelectValue placeholder="Select a protocol" />
               </SelectTrigger>
               <SelectContent>
@@ -73,6 +77,9 @@ export function ConstructorForm({
                 ))}
               </SelectContent>
             </Select>
+            {options.protocol === 'openid4vp-arbitrary' && (
+              <ProtocolFilteringNote remainingRequests="the OpenID4VP request" />
+            )}
           </div>
 
           <div className="space-y-2">
@@ -143,7 +150,7 @@ export function ConstructorForm({
             </div>
           </div>
           
-          {options.protocol === 'openid4vp' && (
+          {isOpenId4VpProtocol(options.protocol) && (
             <>
               <Separator />
               <div className="space-y-2">

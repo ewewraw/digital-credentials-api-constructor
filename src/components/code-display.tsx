@@ -7,6 +7,8 @@ import { CipherSuite, DhkemP256HkdfSha256, HkdfSha256, Aes128Gcm } from '@hpke/c
 import { decodeSdJwt } from '@sd-jwt/decode';
 import type { RequestOptions, IssuanceRequestOptions } from '@/lib/types';
 import { generateRequestObject } from '@/lib/code-generator';
+import { getIssuerUrlProblem } from '@/lib/issuer-url';
+import { isIssuanceProtocol, LEGACY_ISSUANCE_PROTOCOL } from '@/lib/issuance-options';
 import { MOCK_MDOC_PRIVATE_JWK, MOCK_MDOC_PUBLIC_JWK } from '@/lib/mock-keys';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -328,6 +330,19 @@ export function CodeDisplay({ code, requestObject, options, responseDecryptionKe
   const runIssuanceRequest = async (offerObject: any) => {
     console.log("Detected Issuance Request (Credential Offer)");
 
+    // The wallet calls the issuer endpoints directly. If it can't reach them,
+    // stop here instead of showing a QR code for an issuance that can't work.
+    const issuerUrl = (options as IssuanceRequestOptions).issuerUrl?.trim();
+    const issuerUrlProblem = getIssuerUrlProblem(issuerUrl);
+    if (issuerUrlProblem) {
+      toast({
+        variant: 'destructive',
+        title: 'Invalid Issuer URL',
+        description: issuerUrlProblem,
+      });
+      return;
+    }
+
     // Wrap it in the Digital Credentials API structure for issuance
     // The structure needs to be strictly: digital: { requests: [{ protocol, data }] }
     // where data IS the offer object from issuance-request.json
@@ -338,7 +353,7 @@ export function CodeDisplay({ code, requestObject, options, responseDecryptionKe
       : {
         digital: {
           requests: [{
-            protocol: "openid4vci1.0",
+            protocol: (options as IssuanceRequestOptions).protocol,
             data: offerObject
           }]
         }
@@ -351,17 +366,29 @@ export function CodeDisplay({ code, requestObject, options, responseDecryptionKe
     });
 
     try {
-      await (navigator.credentials as any).create(issuanceRequest);
+      const credential = await (navigator.credentials as any).create(issuanceRequest);
+      // Log only the protocol, because a wallet's reply data can contain
+      // credential details.
+      console.log("Issuance succeeded. Reply protocol:", credential?.protocol);
       toast({
         title: 'Issuance Success',
-        description: 'The wallet has accepted the offer.',
+        description: `The wallet accepted the offer and replied with the ${credential?.protocol} protocol.`,
       });
     } catch (e: any) {
       console.error("Issuance failed", e);
+      // Chrome reports wallet errors, and wallet replies that the platform
+      // rejects, as a generic NetworkError ("Error retrieving a token."). This
+      // can happen even after the wallet saved the credential.
+      let description = e?.message || "Failed to start issuance. Ensure your browser supports it.";
+      if (e?.name === 'NetworkError') {
+        description = (options as IssuanceRequestOptions).includeLegacyProtocol
+          ? `${e.message} If the wallet saved the credential, only its reply to the browser failed. For details, open chrome://device-log. Otherwise, check that the wallet can reach the issuer at ${issuerUrl}.`
+          : `${e.message} If the wallet saved the credential, only its reply to the browser failed. CMWallet replies with ${LEGACY_ISSUANCE_PROTOCOL}, so add an ${LEGACY_ISSUANCE_PROTOCOL} request and try again.`;
+      }
       toast({
         variant: 'destructive',
         title: 'Issuance Error',
-        description: e.message || "Failed to start issuance. Ensure your browser supports it."
+        description,
       });
     }
   };
@@ -378,7 +405,7 @@ export function CodeDisplay({ code, requestObject, options, responseDecryptionKe
     }
     
     // Detect Issuance Request (Credential Offer)
-    if (options.protocol === 'openid4vci1.0') {
+    if (isIssuanceProtocol(options.protocol)) {
       await runIssuanceRequest(requestObject);
       return;
     }

@@ -1,6 +1,10 @@
 import type { LucideIcon } from 'lucide-react';
+import type { CardDesignId } from './card-designs';
 
-export type Protocol = 'openid4vp' | 'org-iso-mdoc';
+// The protocol options in the presentation constructor. 'openid4vp-arbitrary'
+// sends the OpenID4VP request and a request with an arbitrary protocol, to
+// demonstrate protocol filtering. See protocol-filtering.ts.
+export type Protocol = 'openid4vp' | 'org-iso-mdoc' | 'openid4vp-arbitrary';
 export type DataFormat = 'mso_mdoc' | 'dc' | 'both';
 
 export interface RequestOptions {
@@ -36,13 +40,22 @@ export type SignedRequestData = {
 };
 
 // Types for Issuance
-export type IssuanceProtocol = 'openid4vci1.0';
+// The issuance protocol identifiers that Chrome recognizes.
+export type IssuanceProtocol = 'openid4vci-v1' | 'openid4vci';
 
 export interface IssuanceRequestOptions {
   protocol: IssuanceProtocol;
+  // Whether to repeat the offer in a second request that uses the earlier
+  // openid4vci identifier. See LEGACY_ISSUANCE_PROTOCOL.
+  includeLegacyProtocol: boolean;
+  // Whether to add a request with an arbitrary protocol, to demonstrate
+  // protocol filtering. See ARBITRARY_PROTOCOL_OPTION.
+  includeArbitraryRequest: boolean;
   fields: string[];
   fieldValues: Record<string, string>;
   issuerUrl?: string;
+  // The card art that the wallet shows for the issued credential.
+  cardDesign: CardDesignId;
 }
 
 export interface IssuanceFieldOption {
