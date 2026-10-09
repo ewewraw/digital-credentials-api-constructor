@@ -33,8 +33,8 @@ export const CARD_DESIGNS: CardDesign[] = [
   },
   {
     id: 'card-design-2',
-    label: 'Kitty Credit',
-    altText: 'Pawsitive Tech Kitty Credit card with kittens',
+    label: 'Mr. Snowman Credit',
+    altText: 'Pawsitive Tech Mr. Snowman Credit card with Mr. Snowman',
     publicPath: 'card-designs/card-design-2.png',
     preview: cardDesign2,
   },

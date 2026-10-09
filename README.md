@@ -41,7 +41,7 @@ The GitHub Pages build is a static export, so it can't serve the issuer endpoint
 
 The device that runs the wallet must be able to reach the issuer URL. On your phone, `localhost` refers to the phone, so to test `npm run dev` with a wallet on your phone, do one of the following:
 
-*   Set the issuer URL to your computer's LAN IP address, such as `http://192.168.1.5:9002`. `npm run dev` prints this address as **Network**. The phone must be on the same network.
+*   Set the issuer URL to your computer's LAN IP address, such as `http://192.168.1.x:9002`. `npm run dev` prints this address as **Network**. The phone must be on the same network.
 *   Connect the phone with USB and run `adb reverse tcp:9002 tcp:9002`. The phone can then reach `http://localhost:9002`.
 
 ## Further Reading
