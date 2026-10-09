@@ -28,6 +28,7 @@ export default function IssuancePage() {
     protocol: DEFAULT_ISSUANCE_PROTOCOL,
     includeLegacyProtocol: DEFAULT_INCLUDE_LEGACY_PROTOCOL,
     includeArbitraryRequest: false,
+    testUserActivation: false,
     fields: defaultFields,
     fieldValues: defaultFieldValues,
     // Set after mount, because the default can depend on window.location.
@@ -89,6 +90,10 @@ export default function IssuancePage() {
     setOptions((prev) => ({ ...prev, includeLegacyProtocol }));
   };
 
+  const handleTestUserActivationChange = (testUserActivation: boolean) => {
+    setOptions((prev) => ({ ...prev, testUserActivation }));
+  };
+
   // Handles a selection in the Protocol list. The arbitrary entry keeps the
   // current protocol and adds a request with an arbitrary protocol.
   const handleProtocolOptionChange = (value: string) => {
@@ -133,6 +138,7 @@ export default function IssuancePage() {
             options={options}
             onProtocolOptionChange={handleProtocolOptionChange}
             onIncludeLegacyProtocolChange={handleIncludeLegacyProtocolChange}
+            onTestUserActivationChange={handleTestUserActivationChange}
             onCardDesignChange={handleCardDesignChange}
             onFieldsChange={handleFieldsChange}
             onFieldValueChange={handleFieldValueChange}

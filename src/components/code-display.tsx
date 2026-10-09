@@ -10,6 +10,7 @@ import { generateRequestObject } from '@/lib/code-generator';
 import { getIssuerUrlProblem } from '@/lib/issuer-url';
 import { isIssuanceProtocol, LEGACY_ISSUANCE_PROTOCOL } from '@/lib/issuance-options';
 import { MOCK_MDOC_PRIVATE_JWK, MOCK_MDOC_PUBLIC_JWK } from '@/lib/mock-keys';
+import { testUserActivationAfterCreate, USER_ACTIVATION_TEST_TOASTS } from '@/lib/user-activation-test';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Clipboard, Play, Check } from 'lucide-react';
@@ -360,13 +361,25 @@ export function CodeDisplay({ code, requestObject, options, responseDecryptionKe
       };
 
     console.log("Sending Issuance Request:", issuanceRequest);
-    toast({
-      title: 'Sending Issuance Request...',
-      description: 'Please check your wallet to accept the credential.',
-    });
+    const { testUserActivation } = options as IssuanceRequestOptions;
+    // With the user activation test, the test's result is shown instead.
+    if (!testUserActivation) {
+      toast({
+        title: 'Sending Issuance Request...',
+        description: 'Please check your wallet to accept the credential.',
+      });
+    }
 
     try {
-      const credential = await (navigator.credentials as any).create(issuanceRequest);
+      // Start create() before awaiting it, so that the user activation test
+      // runs right after it, in the same task as the click on Run Request.
+      const pendingCredential = (navigator.credentials as any).create(issuanceRequest);
+      if (testUserActivation) {
+        const result = testUserActivationAfterCreate();
+        console.log("User activation test result:", result);
+        toast(USER_ACTIVATION_TEST_TOASTS[result]);
+      }
+      const credential = await pendingCredential;
       // Log only the protocol, because a wallet's reply data can contain
       // credential details.
       console.log("Issuance succeeded. Reply protocol:", credential?.protocol);

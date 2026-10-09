@@ -33,6 +33,7 @@ interface IssuanceConstructorFormProps {
   // Receives the value of the selected entry in the Protocol list.
   onProtocolOptionChange: (value: string) => void;
   onIncludeLegacyProtocolChange: (includeLegacyProtocol: boolean) => void;
+  onTestUserActivationChange: (testUserActivation: boolean) => void;
   onCardDesignChange: (cardDesign: CardDesignId) => void;
   onFieldsChange: (fieldId: string, checked: boolean) => void;
   onFieldValueChange: (fieldId: string, value: string) => void;
@@ -47,6 +48,7 @@ export function IssuanceConstructorForm({
   options,
   onProtocolOptionChange,
   onIncludeLegacyProtocolChange,
+  onTestUserActivationChange,
   onCardDesignChange,
   onFieldsChange,
   onFieldValueChange,
@@ -121,6 +123,26 @@ export function IssuanceConstructorForm({
                   CMWallet replies with <code>{LEGACY_ISSUANCE_PROTOCOL}</code>, even to
                   an <code>{options.protocol}</code> request. Listing both identifiers keeps
                   its reply among the requested protocols.
+                </p>
+              </div>
+            </div>
+            {/* Run Request reads this option. See user-activation-test.ts. */}
+            <div className="flex items-start space-x-3 pt-1">
+              <Checkbox
+                id="testUserActivation"
+                checked={options.testUserActivation}
+                onCheckedChange={(checked) => onTestUserActivationChange(checked === true)}
+                aria-describedby="testUserActivation-description"
+                className="mt-0.5"
+              />
+              <div className="space-y-1">
+                <Label htmlFor="testUserActivation" className="font-normal cursor-pointer">
+                  Test user activation consumption
+                </Label>
+                <p id="testUserActivation-description" className="text-sm text-muted-foreground">
+                  Calls <code>window.open()</code> right after <code>create()</code>. By default,
+                  Chrome blocks windows that open without a user activation, so the window opens
+                  only if <code>create()</code> didn&apos;t consume the activation.
                 </p>
               </div>
             </div>

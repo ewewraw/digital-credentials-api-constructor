@@ -51,6 +51,9 @@ export interface IssuanceRequestOptions {
   // Whether to add a request with an arbitrary protocol, to demonstrate
   // protocol filtering. See ARBITRARY_PROTOCOL_OPTION.
   includeArbitraryRequest: boolean;
+  // Whether Run Request also calls window.open() right after create(), to test
+  // whether create() consumes the user activation. See user-activation-test.ts.
+  testUserActivation: boolean;
   fields: string[];
   fieldValues: Record<string, string>;
   issuerUrl?: string;
